@@ -5,10 +5,10 @@
 
 const int analogPin = 34;
 
-//const char* ssid = "Internet_UNL";
-//const char* password = "UNL1859WiFi";
-const char* ssid = "DAYSI";
-const char* password = "Tauro181100";
+const char* ssid = "Internet_UNL";
+const char* password = "UNL1859WiFi";
+//const char* ssid = "DAYSI";
+//const char* password = "Tauro181100";
 const char* mqtt_server = "181.113.129.26";
 const int mqtt_port = 1883;
 const char* topic = "ruido";
@@ -108,8 +108,8 @@ void loop() {
     char payload[256];
     snprintf(payload, sizeof(payload),
              "{"
-             "\"sensor\":\"ESP32\","
-             "\"tipo\":\"ruido\","
+             "\"sensor\":\"KY-038\","
+             "\"tipo\":\"Sonido analógico\","
              "\"dato_raw\":%d,"
              "\"ruido_dB\":%.2f,"
              "\"promedio_30s\":%.2f,"
@@ -135,3 +135,4 @@ void loop() {
 
   delay(1000);
 }
+
