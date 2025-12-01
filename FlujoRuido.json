@@ -1,0 +1,610 @@
+[
+    {
+        "id": "c6b756179b72e9fc",
+        "type": "tab",
+        "label": "DashBoard_Ruido",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e18313c31f297603",
+        "type": "mqtt in",
+        "z": "c6b756179b72e9fc",
+        "name": "",
+        "topic": "ruido",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "4994c6849cc47554",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 210,
+        "y": 140,
+        "wires": [
+            [
+                "5f138102f52b56e2",
+                "c86226d262d7f413",
+                "fdaa051118c19914"
+            ]
+        ]
+    },
+    {
+        "id": "5f138102f52b56e2",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Mapa",
+        "func": "// Accede al contenido del mensaje\nlet data = msg.payload;\n\n// Crea un nuevo mensaje para el mapa\nmsg.payload = {\n    name: data.sensor || \"Sensor Ruido\",\n    lat: data.ubicacion.lat,\n    lon: data.ubicacion.lon,\n    icon: \"fa-volume-up\",  // ícono de altavoz\n    layer: \"Sensores de Ruido\",\n    popup: `\n        <b>Sensor:</b> ${data.sensor}<br>\n        <b>Ruido:</b> ${data.ruido_dB} dB<br>\n        <b>Promedio 30s:</b> ${data.promedio_30s}<br>\n        <b>Timestamp:</b> ${data.timestamp}\n    `\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 140,
+        "wires": [
+            [
+                "0b896505afde5a25"
+            ]
+        ]
+    },
+    {
+        "id": "0b896505afde5a25",
+        "type": "ui_worldmap",
+        "z": "c6b756179b72e9fc",
+        "group": "a65c308763fc8951",
+        "order": 2,
+        "width": 6,
+        "height": 11,
+        "name": "Ubicaciòn sensor",
+        "lat": "-4.030417",
+        "lon": "-79.199528",
+        "zoom": "15",
+        "layer": "OSMG",
+        "cluster": "",
+        "maxage": "",
+        "usermenu": "hide",
+        "layers": "hide",
+        "panit": "false",
+        "panlock": "false",
+        "zoomlock": "false",
+        "hiderightclick": "true",
+        "coords": "none",
+        "showgrid": "false",
+        "showruler": "false",
+        "allowFileDrop": "false",
+        "path": "/worldmap",
+        "overlist": "DR,CO,RA,DN,HM",
+        "maplist": "OSMG,OSMC,EsriC,EsriS,EsriT,EsriDG,UKOS",
+        "mapname": "",
+        "mapurl": "",
+        "mapopt": "",
+        "mapwms": false,
+        "x": 790,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "c86226d262d7f413",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Calcular Latencia",
+        "func": "// Nodo Function: Calcular latencia (versión robusta)\n\n// Normalizar payload si viene como string JSON\nlet raw = msg.payload;\nif (typeof raw === \"string\") {\n    try {\n        raw = JSON.parse(raw);\n    } catch (e) {\n        node.warn(\"Payload string no es JSON: \" + raw);\n        return null;\n    }\n}\n\n// Si los datos vienen anidados en payload.payload\nif (raw && raw.payload && typeof raw.payload === \"object\") {\n    raw = raw.payload;\n}\n\nlet data = raw || {};\n\n// Buscar campo timestamp en varias claves posibles\nlet tsCandidate = data.timestamp || data.time || data.ts || null;\n\nif (!tsCandidate) {\n    node.warn(\"No se encontró timestamp en el mensaje. No se calcula latencia.\");\n    // opcional: enviar el mensaje igualmente con latencia null\n    data.latencia_s = null;\n    msg.payload = data;\n    return msg;\n}\n\n// Asegurarnos de trabajar con string\nlet tsText = String(tsCandidate).trim();\n\n// Si el formato es \"YYYY-MM-DD HH:MM:SS\" convertir a ISO \"T\"\nif (/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/.test(tsText)) {\n    tsText = tsText.replace(\" \", \"T\");\n}\n\n// Intentar parsear la fecha\nlet sent = new Date(tsText);\nif (isNaN(sent.getTime())) {\n    node.warn(\"Timestamp no parseable: \" + tsText);\n    data.latencia_s = null;\n    msg.payload = data;\n    return msg;\n}\n\n// Calcular latencia (segundos) usando getTime para evitar confusiones\nlet now = new Date();\nlet latencySeconds = (now.getTime() - sent.getTime()) / 1000;\ndata.latencia_s = Number(latencySeconds.toFixed(2));\n\n// Devolver payload con el nuevo campo\nmsg.payload = data;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 240,
+        "wires": [
+            [
+                "fa4d7c7bd3d1582b",
+                "a1be2aefe5cee3d6",
+                "2540fb2d036c4f49",
+                "ebfce663ad3e6111"
+            ]
+        ]
+    },
+    {
+        "id": "591e08ffa52af3be",
+        "type": "ui_chart",
+        "z": "c6b756179b72e9fc",
+        "name": "Grafico latencia",
+        "group": "06c09bf7732727cd",
+        "order": 1,
+        "width": "12",
+        "height": "6",
+        "label": "Latencia",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "latencia_s",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1060,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fa4d7c7bd3d1582b",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Latencia",
+        "func": "// Prepara el mensaje solo con la latencia\nlet data = msg.payload;\n\n// Si el mensaje llega como string, intentar parsear\nif (typeof data === \"string\") {\n    try {\n        data = JSON.parse(data);\n    } catch (err) {\n        node.warn(\"Payload no es JSON válido\");\n        return null;\n    }\n}\n\n// Si no existe la latencia, no graficar\nif (!data.latencia_s) return null;\n\n// Establece la latencia como valor a graficar\nmsg.topic = \"Latencia (s)\";\nmsg.payload = data.latencia_s;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 240,
+        "wires": [
+            [
+                "591e08ffa52af3be",
+                "4fe79bd3d5451c3e",
+                "d757fdc5a499a606"
+            ]
+        ]
+    },
+    {
+        "id": "a1be2aefe5cee3d6",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Valor actual",
+        "func": "// Prepara el mensaje solo con la latencia\nlet data = msg.payload;\n\n// Si el mensaje llega como string, intentar parsear\nif (typeof data === \"string\") {\n    try {\n        data = JSON.parse(data);\n    } catch (err) {\n        node.warn(\"Payload no es JSON válido\");\n        return null;\n    }\n}\n\n// Si no existe la latencia, no graficar\nif (!data.ruido_dB) return null;\n\n// Establece la latencia como valor a graficar\nmsg.topic = \"Ruido\";\nmsg.payload = data.ruido_dB;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 320,
+        "wires": [
+            [
+                "83e0822dd6d9c4df"
+            ]
+        ]
+    },
+    {
+        "id": "83e0822dd6d9c4df",
+        "type": "ui_gauge",
+        "z": "c6b756179b72e9fc",
+        "name": "",
+        "group": "a65c308763fc8951",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "valor actual",
+        "label": "units",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "90",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 1010,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "2540fb2d036c4f49",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Max, Min, Promedio",
+        "func": "let data = msg.payload;\n\n// Si el payload llega como string, intenta parsearlo\nif (typeof data === \"string\") {\n    try {\n        data = JSON.parse(data);\n    } catch (err) {\n        node.warn(\"Payload no es JSON válido\");\n        return null;\n    }\n}\n\n// Asegura que existan los valores necesarios\nif (data.promedio_30s === undefined || data.min_30s === undefined || data.max_30s === undefined) {\n    node.warn(\"Faltan datos de ruido\");\n    return null;\n}\n\n// Prepara tres mensajes distintos para el mismo gráfico\nlet msgs = [];\n\n// Promedio (línea azul)\nmsgs.push({\n    topic: \"Promedio (30s)\",\n    payload: data.promedio_30s\n});\n\n// Mínimo (línea verde)\nmsgs.push({\n    topic: \"Mínimo (30s)\",\n    payload: data.min_30s\n});\n\n// Máximo (línea roja)\nmsgs.push({\n    topic: \"Máximo (30s)\",\n    payload: data.max_30s\n});\n\nreturn [msgs];\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 400,
+        "wires": [
+            [
+                "5237b9402d89bce8"
+            ]
+        ]
+    },
+    {
+        "id": "4fe79bd3d5451c3e",
+        "type": "ui_text",
+        "z": "c6b756179b72e9fc",
+        "group": "06c09bf7732727cd",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "name": "",
+        "label": "Latencia actual",
+        "format": "{{msg.payload}} ms",
+        "layout": "col-center",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1060,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "ebfce663ad3e6111",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "TABLA",
+        "func": "// --- Asegurar que el payload es un objeto ---\nlet payload;\ntry {\n    payload = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n} catch (e) {\n    node.warn(\"Payload no es JSON válido\");\n    return null;\n}\n\n// --- Obtener hora actual y formatear ---\nconst now = new Date();\nconst isoTime = now.toISOString();\n\n// --- Crear estructura limpia con todos los datos ---\nconst data = {\n    \"Hora / Fecha\": payload.timestamp || isoTime,\n    \"Ruido (dB)\": payload.ruido_dB?.toFixed(2) || '',\n    \"Promedio 30s (dB)\": payload.promedio_30s?.toFixed(2) || '',\n    \"Mínimo 30s (dB)\": payload.min_30s?.toFixed(2) || '',\n    \"Máximo 30s (dB)\": payload.max_30s?.toFixed(2) || '',\n    \"Dato Raw\": payload.dato_raw || '',\n    \"Latencia (ms)\": payload.latencia_s?.toFixed(2) || '',\n};\n\n// --- Acumular los datos en el dashboard ---\nlet tabla = flow.get(\"tabla\") || [];\ntabla.push(data);\n\n// Limitar la tabla a las últimas 30 filas\nif (tabla.length > 40) tabla.shift();\n\nflow.set(\"tabla\", tabla);\n\n// --- Salida para el dashboard ---\nmsg.payload = tabla;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "5",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 480,
+        "wires": [
+            [
+                "a9c0ab8e4bdf9f9b"
+            ]
+        ]
+    },
+    {
+        "id": "a9c0ab8e4bdf9f9b",
+        "type": "ui_table",
+        "z": "c6b756179b72e9fc",
+        "group": "7edd6c89ca87420a",
+        "name": "Tabla de valores",
+        "order": 1,
+        "width": 16,
+        "height": 15,
+        "columns": [],
+        "outputs": 0,
+        "cts": false,
+        "x": 1060,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "5237b9402d89bce8",
+        "type": "ui_chart",
+        "z": "c6b756179b72e9fc",
+        "name": "Grafico Ruido",
+        "group": "06c09bf7732727cd",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "label": "VALORES RUIDO",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "VALORES RUIDO",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1060,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "13928569d332f4f5",
+        "type": "ui_text",
+        "z": "c6b756179b72e9fc",
+        "group": "06c09bf7732727cd",
+        "order": 3,
+        "width": 6,
+        "height": 1,
+        "name": "",
+        "label": "Promedio de latencia",
+        "format": "{{msg.payload}} ms",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1240,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "d757fdc5a499a606",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Calcular promedio",
+        "func": "// --- Obtener la latencia actual ---\nlet lat = msg.payload;\n\nif (lat === undefined || lat === null) {\n    return null; // no procesar valores inválidos\n}\n\n// --- Recuperar acumulador del contexto ---\nlet suma = flow.get(\"suma_latencia\") || 0;\nlet contador = flow.get(\"contador_latencia\") || 0;\n\n// --- Actualizar acumulador ---\nsuma += Number(lat);\ncontador += 1;\n\n// --- Guardar nuevamente en el contexto ---\nflow.set(\"suma_latencia\", suma);\nflow.set(\"contador_latencia\", contador);\n\n// --- Calcular promedio ---\nlet promedio = suma / contador;\n\n// --- Redondear a 3 decimales ---\npromedio = Number(promedio.toFixed(3));\n\n// --- Preparar salida ---\nmsg.topic = \"Latencia Promedio (s)\";\nmsg.payload = promedio;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 260,
+        "wires": [
+            [
+                "13928569d332f4f5"
+            ]
+        ]
+    },
+    {
+        "id": "0c61355fcb0325ed",
+        "type": "ui_template",
+        "z": "c6b756179b72e9fc",
+        "group": "06c09bf7732727cd",
+        "name": "",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "format": "<div style=\"display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600;\">\n\n    <div style=\"display: flex; align-items: center; gap: 6px;\">\n        <div style=\"width: 15px; height: 15px; background-color: #1F77B4;\"></div>\n        <span>Promedio (30s)</span>\n    </div>\n\n    <div style=\"display: flex; align-items: center; gap: 6px;\">\n        <div style=\"width: 15px; height: 15px; background-color: #AEC7E8;\"></div>\n        <span>Mínimo (30s)</span>\n    </div>\n\n    <div style=\"display: flex; align-items: center; gap: 6px;\">\n        <div style=\"width: 15px; height: 15px; background-color: #FF7F0E;\"></div>\n        <span>Máximo (30s)</span>\n    </div>\n\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 980,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fdaa051118c19914",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Almacenar 30 minutos",
+        "func": "let p = msg.payload;\n\n// Validar JSON si viene como string\nif (typeof p === \"string\") {\n    try { p = JSON.parse(p); }\n    catch (e) { return null; }\n}\n\n// Validar timestamp\nlet ts = new Date(p.timestamp);\nif (isNaN(ts)) return null;\n\n// Calcular límite de 30 minutos\nlet ahora = new Date();\nlet limite = ahora.getTime() - 30 * 60 * 1000;\n\n// Obtener buffer actual\nlet buffer = flow.get(\"buffer_ruido_30min\") || [];\n\n// Añadir nueva lectura en formato CSV\nbuffer.push({\n    Hora_Fecha: p.timestamp,\n    Ruido_dB: p.ruido_dB,\n    Promedio_30s: p.promedio_30s,\n    Min_30s: p.min_30s,\n    Max_30s: p.max_30s,\n    Dato_Raw: p.dato_raw,\n    Latencia_s: p.latencia_s\n});\n\n// Mantener solo últimos 30 minutos\nbuffer = buffer.filter(x => {\n    let t = new Date(x.Hora_Fecha);\n    return t.getTime() >= limite;\n});\n\n// Guardar buffer\nflow.set(\"buffer_ruido_30min\", buffer);\n\nreturn null; // nada sale hacia el dashboard\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "dab7b6feb9a4a39a",
+        "type": "inject",
+        "z": "c6b756179b72e9fc",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1500",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 190,
+        "y": 440,
+        "wires": [
+            [
+                "502c8a1d2fccafac"
+            ]
+        ]
+    },
+    {
+        "id": "502c8a1d2fccafac",
+        "type": "function",
+        "z": "c6b756179b72e9fc",
+        "name": "Generar csv",
+        "func": "let buffer = flow.get(\"buffer_ruido_30min\") || [];\n\n// Encabezados\nmsg.headers = [\n    \"Hora_Fecha\",\n    \"Ruido_dB\",\n    \"Promedio_30s\",\n    \"Min_30s\",\n    \"Max_30s\",\n    \"Dato_Raw\",\n    \"Latencia_s\"\n];\n\n// Pasamos los datos al template\nmsg.payload = buffer;\n\n// Nombre del archivo\nlet now = new Date();\nlet fecha = now.toISOString().replace(/[:.]/g, \"-\");\n\nmsg.filename = \"ruido.csv\";\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 440,
+        "wires": [
+            [
+                "8e07fddd2f35e9c9"
+            ]
+        ]
+    },
+    {
+        "id": "8e07fddd2f35e9c9",
+        "type": "csv",
+        "z": "c6b756179b72e9fc",
+        "name": "",
+        "spec": "rfc",
+        "sep": ",",
+        "hdrin": "",
+        "hdrout": "once",
+        "multi": "one",
+        "ret": "\\r\\n",
+        "temp": "Hora_Fecha,Ruido_dB,Promedio_30s,Min_30s,Max_30s,Dato_Raw,Latencia_s",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 590,
+        "y": 540,
+        "wires": [
+            [
+                "a9a6df9774e9e039"
+            ]
+        ]
+    },
+    {
+        "id": "a9a6df9774e9e039",
+        "type": "file",
+        "z": "c6b756179b72e9fc",
+        "name": "",
+        "filename": "filename",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 780,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "28e8c282cad5e60b",
+        "type": "ui_spacer",
+        "z": "c6b756179b72e9fc",
+        "name": "spacer",
+        "group": "",
+        "order": 2,
+        "width": "",
+        "height": ""
+    },
+    {
+        "id": "4994c6849cc47554",
+        "type": "mqtt-broker",
+        "name": "Mosquitto",
+        "broker": "181.113.129.26",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "ruido",
+        "birthQos": "0",
+        "birthRetain": "true",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "a65c308763fc8951",
+        "type": "ui_group",
+        "name": "Valor actual de ruido",
+        "tab": "4dfb20512752db1f",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "06c09bf7732727cd",
+        "type": "ui_group",
+        "name": "Graficas latencia y ruido",
+        "tab": "4dfb20512752db1f",
+        "order": 1,
+        "disp": true,
+        "width": 12,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "7edd6c89ca87420a",
+        "type": "ui_group",
+        "name": "Monitoreo ruido",
+        "tab": "4dfb20512752db1f",
+        "order": 2,
+        "disp": true,
+        "width": 16,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "4dfb20512752db1f",
+        "type": "ui_tab",
+        "name": "Monitoreo",
+        "icon": "dashboard",
+        "order": 2,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "e11065155d43acfd",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-web-worldmap": "5.5.4",
+            "node-red-dashboard": "3.6.6",
+            "node-red-node-ui-table": "0.4.5"
+        }
+    }
+]
