@@ -4,7 +4,7 @@
 #include "time.h"
 
 
-const int analogPin = 34;
+const int analogPin = 4;
 
 
 const char* ssid = "Internet_UNL";
@@ -37,7 +37,7 @@ void setupWiFi() {
   }
 
 
-  Serial.println("\nConexi髇 Wi-Fi establecida.");
+  Serial.println("\nConexi贸n Wi-Fi establecida.");
   Serial.print("IP asignada: ");
   Serial.println(WiFi.localIP());
 }
@@ -49,7 +49,7 @@ void reconnect() {
     if (client.connect("ESP32Client")) {
       Serial.println("Conectado.");
     } else {
-      Serial.print("Fallo en la conexi髇. C骴igo: ");
+      Serial.print("Fallo en la conexi贸n. C贸digo: ");
       Serial.println(client.state());
       delay(5000);
     }
@@ -126,7 +126,7 @@ void loop() {
     snprintf(payload, sizeof(payload),
              "{"
              "\"sensor\":\"KY-038\","
-             "\"tipo\":\"Sonido anal骻ico\","
+             "\"tipo\":\"Sonido anal贸gico\","
              "\"dato_raw\":%d,"
              "\"ruido_dB\":%.2f,"
              "\"promedio_30s\":%.2f,"
